@@ -9,7 +9,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_DB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_DB_ROOT_PASSWORD}
     ports:
-      - 27017:27017
+      - ${MONGO_DB_PORT}:27017
     volumes:
       - mongodb_data_container:/data/db
       - mongo-config:/data/configdb
@@ -18,7 +18,7 @@ services:
     image: mongo-express
     restart: always
     ports:
-      - 8081:8081
+      - ${MONGO_EXPRESS_PORT}:8081
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_EXPRESS_ADMINUSERNAME}
       ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_EXPRESS_ADMINPASSWORD}

@@ -1,8 +1,13 @@
 import express = require('express');
 import graphqlHTTP = require('express-graphql');
 import graphql = require('graphql');
+import dotenv = require('dotenv');
+import mongodb = require('mongodb');
+
+dotenv.config();
 
 const { buildSchema } = graphql;
+const { MongoClient } = mongodb;
 
 const schema = buildSchema(`
   type Query {
@@ -19,6 +24,12 @@ const schema = buildSchema(`
     updateUser(id: Int!, name: String!, age: String): Person
   }
 `);
+
+// TODOS:
+// Connect to mongodb via tutorial
+// Connect mongodb output to graphql
+// Add more mutations
+// Extend models (optionally)
 
 interface User {
   id: number;
@@ -84,6 +95,14 @@ const root = {
   users: getUsers,
   updateUser
 };
+
+const mongoUrl = `mongodb://${process.env.MONGO_DB_HOST}:${process.env.MONGO_DB_PORT}/`;
+
+MongoClient.connect(mongoUrl, { useUnifiedTopology: true })
+  .then(client => {
+    console.log(`Connected to MongoDB at ${mongoUrl}`)
+  })
+  .catch(error => console.error(error))
 
 const app: express.Application = express();
 app.use('/graphql', graphqlHTTP({
