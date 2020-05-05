@@ -1,113 +1,40 @@
 import express = require('express');
 import graphqlHTTP = require('express-graphql');
-import graphql = require('graphql');
-import dotenv = require('dotenv');
 import mongodb = require('mongodb');
 
-dotenv.config();
+import config from './config';
+import schema from './api';
 
-const { buildSchema } = graphql;
+import UserService from './services/UserService';
+
+const app: express.Application = express();
+
 const { MongoClient } = mongodb;
 
-const schema = buildSchema(`
-  type Query {
-    user(id: Int!): Person
-    users(shark: String): [Person]
-  },
-  type Person {
-    id: Int
-    name: String
-    age: Int
-    shark: String
-  }
-  type Mutation {
-    updateUser(id: Int!, name: String!, age: String): Person
-  }
-`);
-
-// TODOS:
-// Connect to mongodb via tutorial
-// Connect mongodb output to graphql
-// Add more mutations
-// Extend models (optionally)
-
-interface User {
-  id: number;
-  name: string;
-  age: number;
-  shark?: string;
-}
-
-const users: User[] = [
-  {
-    id: 1,
-    name: 'Brian',
-    age: 21,
-    shark: 'Great White Shark'
-  },
-  {
-    id: 2,
-    name: 'Kim',
-    age: 22,
-    shark: 'Whale Shark'
-  },
-  {
-    id: 3,
-    name: 'Faith',
-    age: 23,
-    shark: 'Hammerhead Shark'
-  },
-  {
-    id: 4,
-    name: 'Joseph',
-    age: 23,
-    shark: 'Tiger Shark'
-  },
-  {
-    id: 5,
-    name: 'Joy',
-    age: 25,
-    shark: 'Hammerhead Shark'
-  }
-];
-
-const getUser = (args: { id: number }): User => {
-  return users.filter(user => user.id == args.id)[0];
-}
-
-const getUsers = (args: { shark?: string }): User[] => {
-  return args.shark ? users.filter(user => user.shark === args.shark) : users;
-}
-
-const updateUser = (userData: User): User => {
-  users.map(user => {
-    if (user.id === userData.id) {
-      user.name = userData.name;
-      user.age = userData.age;
-      return user;
-    }
-  });
-  return users.filter(user => user.id === userData.id)[0];
-}
-
-const root = {
-  user: getUser,
-  users: getUsers,
-  updateUser
-};
-
-const mongoUrl = `mongodb://${process.env.MONGO_DB_HOST}:${process.env.MONGO_DB_PORT}/`;
+const mongoUrl = `mongodb://${config.db.username}:${config.db.password}@${config.db.hostname}:${config.db.port}/`;
 
 MongoClient.connect(mongoUrl, { useUnifiedTopology: true })
   .then(client => {
-    console.log(`Connected to MongoDB at ${mongoUrl}`)
+    console.log(`Connected to MongoDB at ${mongoUrl}`);
+    const db = client.db(process.env.DATABASE_NAME);
+    const userCollection = db.collection('users');
+
+    const userService = new UserService(userCollection);
+    
+    const root = {
+      user: userService.getUser,
+      users: userService.getUsers,
+      updateUser: userService.updateUser,
+      createUser: userService.createUser,
+      deleteUser: userService.deleteUser
+    };
+
+    app.use('/graphql', graphqlHTTP({
+      schema: schema,
+      rootValue: root,
+      graphiql: true,
+    }));
   })
   .catch(error => console.error(error))
 
-const app: express.Application = express();
-app.use('/graphql', graphqlHTTP({
-  schema: schema,
-  rootValue: root,
-  graphiql: true,
-}));
 app.listen(4000, () => console.log('Now browse to localhost:4000/graphql'));
